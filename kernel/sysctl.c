@@ -1,4 +1,4 @@
-https://github.com/foxiyofox/a12s-dev-tree/blob/master/kernel/sysctl.c/*
+/*
  * sysctl.c: General linux system control interface
  *
  * Begun 24 March 1995, Stephen Tweedie
