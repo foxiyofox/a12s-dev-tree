@@ -2019,7 +2019,7 @@ static void proactive_compact_node(pg_data_t *pgdat)
 		if (!populated_zone(zone))
 			continue;
 		cc.zone = zone;
-		compact_zone(NULL, &cc);
+		compact_zone(&cc, NULL);
 		VM_BUG_ON(!list_empty(&cc.freepages));
 		VM_BUG_ON(!list_empty(&cc.migratepages));
 	}
