@@ -54,7 +54,6 @@ static inline void count_compact_events(enum vm_event_item item, long delta)
  * Fragmentation score check interval for proactive compaction purposes.
  */
 static const int HPAGE_FRAG_CHECK_INTERVAL_MSEC = 500;
-
 /*
  * Page order with-respect-to which proactive compaction
  * calculates external fragmentation, which is used as
@@ -1420,7 +1419,6 @@ static bool kswapd_is_running(pg_data_t *pgdat)
 {
 	return pgdat->kswapd && (pgdat->kswapd->state == TASK_RUNNING);
 }
-
 /*
  * A zone's fragmentation score is the external fragmentation wrt to the
  * COMPACTION_HPAGE_ORDER scaled by the zone's size. It returns a value
@@ -1434,12 +1432,10 @@ static bool kswapd_is_running(pg_data_t *pgdat)
 static int fragmentation_score_zone(struct zone *zone)
 {
 	unsigned long score;
-
 	score = zone->present_pages *
 			extfrag_for_order(zone, COMPACTION_HPAGE_ORDER);
 	return div64_ul(score, zone->zone_pgdat->node_present_pages + 1);
 }
-
 /*
  * The per-node proactive (background) compaction process is started by its
  * corresponding kcompactd thread when the node's fragmentation score
@@ -1451,21 +1447,16 @@ static int fragmentation_score_node(pg_data_t *pgdat)
 {
 	unsigned long score = 0;
 	int zoneid;
-
 	for (zoneid = 0; zoneid < MAX_NR_ZONES; zoneid++) {
 		struct zone *zone;
-
 		zone = &pgdat->node_zones[zoneid];
 		score += fragmentation_score_zone(zone);
 	}
-
 	return score;
 }
-
 static int fragmentation_score_wmark(pg_data_t *pgdat, bool low)
 {
 	int wmark_low;
-
 	/*
 	 * Cap the low watermak to avoid excessive compaction
 	 * activity in case a user sets the proactivess tunable
@@ -1474,14 +1465,11 @@ static int fragmentation_score_wmark(pg_data_t *pgdat, bool low)
 	wmark_low = max(100 - sysctl_compaction_proactiveness, 5);
 	return low ? wmark_low : min(wmark_low + 10, 100);
 }
-
 static bool should_proactive_compact_node(pg_data_t *pgdat)
 {
 	int wmark_high;
-
 	if (!sysctl_compaction_proactiveness || kswapd_is_running(pgdat))
 		return false;
-
 	wmark_high = fragmentation_score_wmark(pgdat, false);
 	return fragmentation_score_node(pgdat) > wmark_high;
 }
@@ -1492,7 +1480,6 @@ static enum compact_result __compact_finished(struct zone *zone,
 	unsigned int order;
 	const int migratetype = cc->migratetype;
 
-out:
 	if (cc->contended || fatal_signal_pending(current))
 		return COMPACT_CONTENDED;
 
@@ -1516,23 +1503,25 @@ out:
 			return COMPACT_PARTIAL_SKIPPED;
 	}
 
-		if (cc->proactive_compaction) {
+	if (cc->proactive_compaction) {
 		int score, wmark_low;
 		pg_data_t *pgdat;
-
 		pgdat = cc->zone->zone_pgdat;
+
 		if (kswapd_is_running(pgdat))
 			return COMPACT_PARTIAL_SKIPPED;
-
+		
 		score = fragmentation_score_zone(cc->zone);
 		wmark_low = fragmentation_score_wmark(pgdat, true);
-
+		
 		if (score > wmark_low)
-			ret = COMPACT_CONTINUE;
+			return COMPACT_CONTINUE;
 		else
-			ret = COMPACT_SUCCESS;
+			return COMPACT_SUCCESS;
 
-		goto out;
+		// https://elixir.bootlin.com/linux/v5.9.16/source/mm/compaction.c#L2055
+		if (cc->contended || fatal_signal_pending(current))
+			return COMPACT_CONTENDED;
 	}
 
 	if (is_via_compact_memory(cc->order))
@@ -2025,16 +2014,12 @@ static void proactive_compact_node(pg_data_t *pgdat)
 		.gfp_mask = GFP_KERNEL,
 		.proactive_compaction = true,
 	};
-
 	for (zoneid = 0; zoneid < MAX_NR_ZONES; zoneid++) {
 		zone = &pgdat->node_zones[zoneid];
 		if (!populated_zone(zone))
 			continue;
-
 		cc.zone = zone;
-
 		compact_zone(&cc, NULL);
-
 		VM_BUG_ON(!list_empty(&cc.freepages));
 		VM_BUG_ON(!list_empty(&cc.migratepages));
 	}
@@ -2279,7 +2264,7 @@ static int kcompactd(void *p)
 	pg_data_t *pgdat = (pg_data_t*)p;
 	struct task_struct *tsk = current;
 	unsigned int proactive_defer = 0;
-	
+
 	const struct cpumask *cpumask = cpumask_of_node(pgdat->node_id);
 
 	if (!cpumask_empty(cpumask))
@@ -2294,20 +2279,19 @@ static int kcompactd(void *p)
 		unsigned long pflags;
 
 		trace_mm_compaction_kcompactd_sleep(pgdat->node_id);
+		
 		if (wait_event_freezable_timeout(pgdat->kcompactd_wait,
 			kcompactd_work_requested(pgdat),
 			msecs_to_jiffies(HPAGE_FRAG_CHECK_INTERVAL_MSEC))) {
-
 			psi_memstall_enter(&pflags);
 			kcompactd_do_work(pgdat);
 			psi_memstall_leave(&pflags);
 			continue;
 		}
-
+		
 		/* kcompactd wait timeout */
 		if (should_proactive_compact_node(pgdat)) {
 			unsigned int prev_score, score;
-
 			if (proactive_defer) {
 				proactive_defer--;
 				continue;
