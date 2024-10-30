@@ -1,2 +1,5 @@
 kernel modificado por foxiy
 
+o selinux foi modificado para poder funcionar o lz4 na hora da compilação 
+pois o mesmo não estava nem compilando e não ativava o ZRAM no aparelho de teste
+mas agora esta estavel
