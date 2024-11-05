@@ -4,3 +4,7 @@
 SM-A127XX (F/M)
 
 A127XXUBSDDXE2
+
+does not boot on UC SC and below 
+
+boot somente em SD (binary 13)
