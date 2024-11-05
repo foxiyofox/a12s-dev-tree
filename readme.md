@@ -7,4 +7,4 @@ A127XXUBSDDXE2
 
 does not boot on UC SC and below 
 
-boot somente em SD (binary 13)
+boot only on SD (binary 13)
